@@ -415,3 +415,30 @@ Message *Tasks::ReadInQueue(RT_QUEUE *queue) {
     return msg;
 }
 
+void Tasks::GetBatteryValueTask(void *arg){
+    int rs;
+    cout << "Start " << __PRETTY_FUNCTION__ << endl << flush;
+    // Synchronization barrier (waiting that all tasks are starting)
+    rt_sem_p(&sem_barrier, TM_INFINITE);
+    /**************************************************************************************/
+    /* The task starts here                                                               */
+    /**************************************************************************************/
+    rt_task_set_periodic(NULL, TM_NOW, 500000000); //500ms periodique
+    while(1){
+        rt_task_wait_period(NULL);
+        cout << "Periodic Battery Update";
+        rt_mutex_acquire(&mutex_robotStarted, TM_INFINITE);
+        rs = robotStarted;
+        rt_mutex_release(&mutex_robotStarted) // on verifie que le robot a commance
+        if(rs == 1){
+            
+            rt_mutex_acquire(&mutex_robot, TM_INFINITE);
+            BatteryLevel *Battery_Level = new(robot.Write(new Message((MessageID)MESSAGE_ROBOT_BATTERY_GET)));
+            rt_mutex_release(&mutex_robot);
+            
+            WriteInQueue(&q_messageToMon, Battery_Level);
+
+        }
+    }
+}
+

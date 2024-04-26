@@ -149,6 +149,11 @@ private:
      */
     Message *ReadInQueue(RT_QUEUE *queue);
 
+    void GetBatteryValueTask(void *arg);
+    /**
+     * @brief Read Battery Value.
+    */
+
 };
 
 #endif // __TASKS_H__ 
