@@ -94,6 +94,19 @@ void Tasks::Init() {
         cerr << "Error semaphore create: " << strerror(-err) << endl << flush;
         exit(EXIT_FAILURE);
     }
+    if (err = rt_sem_create(&sem_openCamera, NULL, 0, S_FIFO)) {
+        cerr << "Error semaphore create: " << strerror(-err) << endl << flush;
+        exit(EXIT_FAILURE);
+    }
+    /*if (err = rt_sem_create(&sem_getBattery, NULL, 0, S_FIFO)) {
+        cerr << "Error semaphore create: " << strerror(-err) << endl << flush;
+        exit(EXIT_FAILURE);
+    }*/
+    if (err = rt_sem_create(&sem_cameraIsOpen, NULL, 0, S_FIFO)) {
+        cerr << "Error semaphore create: " << strerror(-err) << endl << flush;
+        exit(EXIT_FAILURE);
+    }
+    
     cout << "Semaphores created successfully" << endl << flush;
 
     /**************************************************************************************/
@@ -123,6 +136,15 @@ void Tasks::Init() {
         cerr << "Error task create: " << strerror(-err) << endl << flush;
         exit(EXIT_FAILURE);
     }
+    if (err = rt_task_create(&th_GetBatteryValue, "th_GetBatteryValue", 0, PRIORITY_TMOVE, 0)) {
+        cerr << "Error task create: " << strerror(-err) << endl << flush;
+        exit(EXIT_FAILURE);
+    }
+    if (err = rt_task_create(&th_OpenCamera, "th_OpenCamera", 0, PRIORITY_TMOVE, 0)) {
+        cerr << "Error task create: " << strerror(-err) << endl << flush;
+        exit(EXIT_FAILURE);
+    }
+    
     cout << "Tasks created successfully" << endl << flush;
 
     /**************************************************************************************/
@@ -164,6 +186,14 @@ void Tasks::Run() {
         exit(EXIT_FAILURE);
     }
     if (err = rt_task_start(&th_move, (void(*)(void*)) & Tasks::MoveTask, this)) {
+        cerr << "Error task start: " << strerror(-err) << endl << flush;
+        exit(EXIT_FAILURE);
+    }
+    if (err = rt_task_start(&th_GetBatteryValue, (void(*)(void*)) & Tasks::GetBatteryValueTask, this)) {
+        cerr << "Error task start: " << strerror(-err) << endl << flush;
+        exit(EXIT_FAILURE);
+    }
+    if (err = rt_task_start(&th_OpenCamera, (void(*)(void*)) & Tasks::OpenCameraTask, this)) {
         cerr << "Error task start: " << strerror(-err) << endl << flush;
         exit(EXIT_FAILURE);
     }
@@ -275,7 +305,13 @@ void Tasks::ReceiveFromMonTask(void *arg) {
             rt_mutex_acquire(&mutex_move, TM_INFINITE);
             move = msgRcv->GetID();
             rt_mutex_release(&mutex_move);
+        }else if (msgRcv->CompareID(MESSAGE_CAM_OPEN)){
+            rt_sem_v(&sem_openCamera);
         }
+        /*else if (msgRcv->CompareID()){
+            rt_sem_v(&sem_getBattery);
+        }*/
+        
         delete(msgRcv); // mus be deleted manually, no consumer
     }
 }
@@ -416,6 +452,7 @@ Message *Tasks::ReadInQueue(RT_QUEUE *queue) {
 }
 
 void Tasks::GetBatteryValueTask(void *arg){
+    Message * Battery_Level;
     int rs;
     cout << "Start " << __PRETTY_FUNCTION__ << endl << flush;
     // Synchronization barrier (waiting that all tasks are starting)
@@ -429,16 +466,47 @@ void Tasks::GetBatteryValueTask(void *arg){
         cout << "Periodic Battery Update";
         rt_mutex_acquire(&mutex_robotStarted, TM_INFINITE);
         rs = robotStarted;
-        rt_mutex_release(&mutex_robotStarted) // on verifie que le robot a commance
+        rt_mutex_release(&mutex_robotStarted) ;// on verifie que le robot a commance
         if(rs == 1){
             
             rt_mutex_acquire(&mutex_robot, TM_INFINITE);
-            BatteryLevel *Battery_Level = new(robot.Write(new Message((MessageID)MESSAGE_ROBOT_BATTERY_GET)));
+            Battery_Level = (robot.Write(new Message((MessageID)MESSAGE_ROBOT_BATTERY_GET)));
             rt_mutex_release(&mutex_robot);
             
             WriteInQueue(&q_messageToMon, Battery_Level);
 
         }
+    }
+}
+
+
+void Tasks::OpenCameraTask(void *arg){
+    
+    bool camera_is_open;
+    camera = new Camera(sm,10);// Protéger la caméra avec mutex
+    cout << "Start " << __PRETTY_FUNCTION__ << endl << flush;
+    // Synchronization barrier (waiting that all tasks are starting)
+    rt_sem_p(&sem_barrier, TM_INFINITE);
+    /**************************************************************************************/
+    /* The task starts here                                                               */
+    /**************************************************************************************/
+    while(1){
+        rt_task_wait_period(NULL);
+        rt_sem_p(&sem_openCamera, TM_INFINITE);
+        cout << "Opening Camera";
+       
+        
+            camera_is_open = camera->Open();
+            if (camera_is_open){
+               
+                WriteInQueue(&q_messageToMon, new Message((MessageID)MESSAGE_ANSWER_ACK));
+                rt_sem_v(&sem_cameraIsOpen);
+            }
+            else{
+                WriteInQueue(&q_messageToMon, new Message((MessageID)MESSAGE_ANSWER_NACK));
+            }
+        
+    
     }
 }
 
