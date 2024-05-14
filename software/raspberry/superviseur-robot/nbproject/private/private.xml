@@ -10,8 +10,11 @@
             <file>file:/home/jeunet/Documents/TP_temps_reel/dumber/software/raspberry/superviseur-robot/lib/camera.h</file>
             <file>file:/home/jeunet/Documents/TP_temps_reel/dumber/software/raspberry/superviseur-robot/tasks.h</file>
             <file>file:/home/jeunet/Documents/TP_temps_reel/dumber/software/raspberry/superviseur-robot/tasks.cpp</file>
+            <file>file:/home/jeunet/Documents/TP_temps_reel/dumber/software/raspberry/superviseur-robot/lib/commonitor.cpp</file>
+            <file>file:/home/jeunet/Documents/TP_temps_reel/dumber/software/raspberry/superviseur-robot/lib/camera.cpp</file>
             <file>file:/home/jeunet/Documents/TP_temps_reel/dumber/software/raspberry/superviseur-robot/lib/comrobot.h</file>
             <file>file:/home/jeunet/Documents/TP_temps_reel/dumber/software/raspberry/superviseur-robot/lib/messages.h</file>
+            <file>file:/home/jeunet/Documents/TP_temps_reel/dumber/software/raspberry/superviseur-robot/lib/img.h</file>
         </group>
     </open-files>
 </project-private>

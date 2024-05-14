@@ -79,6 +79,8 @@ private:
     RT_TASK th_move;
     RT_TASK th_GetBatteryValue;
     RT_TASK th_OpenCamera;
+    RT_TASK th_CloseCamera;
+    RT_TASK th_CaptureCamera;
     
     /**********************************************************************/
     /* Mutex                                                              */
@@ -87,6 +89,7 @@ private:
     RT_MUTEX mutex_robot;
     RT_MUTEX mutex_robotStarted;
     RT_MUTEX mutex_move;
+    RT_MUTEX mutex_camera;
 
     /**********************************************************************/
     /* Semaphores                                                         */
@@ -98,6 +101,7 @@ private:
     RT_SEM sem_openCamera;
    // RT_SEM sem_getBattery;
     RT_SEM sem_cameraIsOpen;
+    RT_SEM sem_closeCamera;
 
     /**********************************************************************/
     /* Message queues                                                     */
@@ -164,8 +168,17 @@ private:
     /**
      * @brief Open Camera. Send an Ack or a NACK
     */
-
-
+    
+    void CaptureCameraTask(void *arg);
+    /**
+     * @brief If camera is open send periodically (100ms) an image to the monitor.
+    */
+    
+    void CloseCameraTask(void *arg);
+    /**
+     * @brief If camera is open ,closes it.
+    */
+    
 };
 
 
