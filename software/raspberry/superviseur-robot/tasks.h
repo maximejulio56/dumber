@@ -65,6 +65,8 @@ private:
     ComMonitor monitor;
     ComRobot robot;
     Camera * camera;
+    Arena globalArene;
+    int validateArena=0;
     int robotStarted = 0;
     int move = MESSAGE_ROBOT_STOP;
     
@@ -81,6 +83,8 @@ private:
     RT_TASK th_OpenCamera;
     RT_TASK th_CloseCamera;
     RT_TASK th_CaptureCamera;
+    RT_TASK th_SearchArenaCamera;
+    
     
     /**********************************************************************/
     /* Mutex                                                              */
@@ -90,6 +94,8 @@ private:
     RT_MUTEX mutex_robotStarted;
     RT_MUTEX mutex_move;
     RT_MUTEX mutex_camera;
+    RT_MUTEX mutex_validateArena;
+    RT_MUTEX mutex_globalArene;
 
     /**********************************************************************/
     /* Semaphores                                                         */
@@ -102,6 +108,7 @@ private:
    // RT_SEM sem_getBattery;
     RT_SEM sem_cameraIsOpen;
     RT_SEM sem_closeCamera;
+    RT_SEM sem_arena;
 
     /**********************************************************************/
     /* Message queues                                                     */
@@ -177,6 +184,11 @@ private:
     void CloseCameraTask(void *arg);
     /**
      * @brief If camera is open ,closes it.
+    */
+    
+    void SearchArenaCameraTask(void *arg);
+    /**
+     * @brief If camera is open. Stop periodic capture. Capture one image and search the arena in this image.
     */
     
 };
