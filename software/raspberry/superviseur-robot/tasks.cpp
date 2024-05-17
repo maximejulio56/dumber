@@ -649,7 +649,7 @@ void Tasks::SearchArenaCameraTask(void *arg){
     
     while(1){
         rt_sem_p(&sem_arena, TM_INFINITE);
-        //rt_sem_p(&sem_cameraIsOpen, TM_INFINITE);
+        rt_sem_p(&sem_cameraIsOpen, TM_INFINITE);
         cout << "\nSearsching Arena\n";
         rt_mutex_acquire(&mutex_camera, TM_INFINITE);
         //Prendre le mutex va mettre fin a l'envoie perio d'image
@@ -657,6 +657,7 @@ void Tasks::SearchArenaCameraTask(void *arg){
         arene = image->SearchArena();
         if (arene.IsEmpty()){
             WriteInQueue(&q_messageToMon, new Message((MessageID)MESSAGE_ANSWER_NACK));
+            cout << "No arena found" << endl;
         }
         else {
                 image->DrawArena(arene);
@@ -672,7 +673,7 @@ void Tasks::SearchArenaCameraTask(void *arg){
                 rt_mutex_release(&mutex_validateArena);
                         
         }
-        //rt_sem_v(&sem_cameraIsOpen);
+        rt_sem_v(&sem_cameraIsOpen);
         rt_mutex_release(&mutex_camera);
         
         
