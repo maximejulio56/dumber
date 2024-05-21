@@ -93,6 +93,10 @@ void Tasks::Init() {
         cerr << "Error mutex create: " << strerror(-err) << endl << flush;
         exit(EXIT_FAILURE);
     }
+    if (err = rt_mutex_create(&mutex_areneMsgAttente, NULL)) {
+        cerr << "Error mutex create: " << strerror(-err) << endl << flush;
+        exit(EXIT_FAILURE);
+    }
     
     cout << "Mutexes created successfully" << endl << flush;
 
@@ -367,12 +371,18 @@ void Tasks::ReceiveFromMonTask(void *arg) {
         }
         else if (msgRcv->CompareID(MESSAGE_CAM_ARENA_CONFIRM)){
             rt_mutex_acquire(&mutex_validateArena, TM_INFINITE);
+            rt_mutex_acquire(&mutex_areneMsgAttente, TM_INFINITE);
             validateArena = 1;
+            areneMsgAttente = false;
+            rt_mutex_release(&mutex_areneMsgAttente);
             rt_mutex_release(&mutex_validateArena);
         }
         else if (msgRcv->CompareID(MESSAGE_CAM_ARENA_INFIRM)){
             rt_mutex_acquire(&mutex_validateArena, TM_INFINITE);
+            rt_mutex_acquire(&mutex_areneMsgAttente, TM_INFINITE);
             validateArena = 0;
+            areneMsgAttente = false;
+            rt_mutex_release(&mutex_areneMsgAttente);
             rt_mutex_release(&mutex_validateArena);
         }
         else if (msgRcv->CompareID(MESSAGE_CAM_POSITION_COMPUTE_START)){
@@ -682,6 +692,7 @@ void Tasks::SearchArenaCameraTask(void *arg){
     /**************************************************************************************/
     
     while(1){
+        areneMsgAttente = true;
         rt_sem_p(&sem_arena, TM_INFINITE);
         rt_sem_p(&sem_cameraIsOpen, TM_INFINITE);
         cout << "Searsching Arena"<<endl;
@@ -699,7 +710,13 @@ void Tasks::SearchArenaCameraTask(void *arg){
                 image->DrawArena(arene);
                 msg = new MessageImg((MessageID)MESSAGE_CAM_IMAGE,image);
                 WriteInQueue(&q_messageToMon, msg);
-                
+                rt_mutex_acquire(&mutex_areneMsgAttente, TM_INFINITE);
+                while(areneMsgAttente){
+                    rt_mutex_release(&mutex_areneMsgAttente);
+                    cout<< "Attente de Confirmation"<< endl;
+                    rt_mutex_acquire(&mutex_areneMsgAttente, TM_INFINITE);
+                };
+                rt_mutex_release(&mutex_areneMsgAttente);
                 rt_mutex_acquire(&mutex_validateArena, TM_INFINITE);
                 if(validateArena == 1){
                     rt_mutex_acquire(&mutex_globalArene, TM_INFINITE);

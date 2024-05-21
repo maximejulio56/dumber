@@ -67,7 +67,8 @@ private:
     Camera * camera;
     Arena globalArene;
     bool enablePosition = false;
-    int validateArena=0;
+    bool areneMsgAttente = true;
+    int validateArena = 0;
     int robotStarted = 0;
     int move = MESSAGE_ROBOT_STOP;
     
@@ -98,6 +99,7 @@ private:
     RT_MUTEX mutex_validateArena;
     RT_MUTEX mutex_globalArene;
     RT_MUTEX mutex_enablePosition;
+    RT_MUTEX mutex_areneMsgAttente;
 
     /**********************************************************************/
     /* Semaphores                                                         */
