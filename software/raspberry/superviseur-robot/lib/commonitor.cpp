@@ -151,7 +151,7 @@ void ComMonitor::Write(Message *msg) {
     write(clientID, str.c_str(), str.length());
 
     //if (!msg->CompareID(MESSAGE_CAM_IMAGE)) {
-        delete(msg);
+    delete(msg);
     //}
    
     // Call user method after write

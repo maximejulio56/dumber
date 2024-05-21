@@ -89,6 +89,11 @@ void Tasks::Init() {
         cerr << "Error mutex create: " << strerror(-err) << endl << flush;
         exit(EXIT_FAILURE);
     }
+    if (err = rt_mutex_create(&mutex_enablePosition, NULL)) {
+        cerr << "Error mutex create: " << strerror(-err) << endl << flush;
+        exit(EXIT_FAILURE);
+    }
+    
     cout << "Mutexes created successfully" << endl << flush;
 
     /**************************************************************************************/
@@ -370,6 +375,18 @@ void Tasks::ReceiveFromMonTask(void *arg) {
             validateArena = 0;
             rt_mutex_release(&mutex_validateArena);
         }
+        else if (msgRcv->CompareID(MESSAGE_CAM_POSITION_COMPUTE_START)){
+            rt_mutex_acquire(&mutex_enablePosition, TM_INFINITE);
+            enablePosition = true;
+            rt_mutex_release(&mutex_enablePosition);
+        }
+        else if (msgRcv->CompareID(MESSAGE_CAM_POSITION_COMPUTE_STOP)){
+            rt_mutex_acquire(&mutex_enablePosition, TM_INFINITE);
+            enablePosition = false;
+            rt_mutex_release(&mutex_enablePosition);
+        }
+        
+        
         
         /*else if (msgRcv->CompareID()){
             rt_sem_v(&sem_getBattery);
@@ -526,7 +543,7 @@ void Tasks::GetBatteryValueTask(void *arg){
     rt_task_set_periodic(NULL, TM_NOW, 500000000); //500ms periodique
     while(1){
         rt_task_wait_period(NULL);
-        cout << "\nPeriodic Battery Update\n";
+        cout << "Periodic Battery Update"<<endl;
         rt_mutex_acquire(&mutex_robotStarted, TM_INFINITE);
         rs = robotStarted;
         rt_mutex_release(&mutex_robotStarted) ;// on verifie que le robot a commance
@@ -555,7 +572,7 @@ void Tasks::OpenCameraTask(void *arg){
     while(1){
         rt_task_wait_period(NULL);
         rt_sem_p(&sem_openCamera, TM_INFINITE);
-        cout << "\nOpening Camera\n";
+        cout << "Opening Camera"<<endl;
        
         rt_mutex_acquire(&mutex_camera, TM_INFINITE);
         camera = new Camera(sm,10);
@@ -577,6 +594,7 @@ void Tasks::CaptureCameraTask(void *arg){
     
     Img * image;
     MessageImg * msg;
+    std::list<Position> listePosition;
     cout << "Start " << __PRETTY_FUNCTION__ << endl << flush;
     // Synchronization barrier (waiting that all tasks are starting)
     rt_sem_p(&sem_barrier, TM_INFINITE);
@@ -587,7 +605,7 @@ void Tasks::CaptureCameraTask(void *arg){
     while(1){
         rt_task_wait_period(NULL);
         rt_sem_p(&sem_cameraIsOpen, TM_INFINITE);
-        cout << "\nPeriodic Image Update\n";
+        cout << "Periodic Image Update"<< endl;
         rt_mutex_acquire(&mutex_camera, TM_INFINITE);
         image = new Img(camera -> Grab());    
         rt_mutex_release(&mutex_camera);
@@ -595,7 +613,23 @@ void Tasks::CaptureCameraTask(void *arg){
         if(validateArena == 1){
             rt_mutex_acquire(&mutex_globalArene, TM_INFINITE);
             image->DrawArena(globalArene);
-            rt_mutex_release(&mutex_globalArene);   
+            rt_mutex_acquire(&mutex_enablePosition, TM_INFINITE);
+            if (enablePosition){
+                listePosition = image->SearchRobot(globalArene);
+                if(listePosition.empty()){
+                    Position position_null;
+                    position_null.center = cv::Point2f(-1.0,-1.0);
+                    position_null.direction = cv::Point2f(-1.0,-1.0);
+                    WriteInQueue(&q_messageToMon, new MessagePosition((MessageID)MESSAGE_CAM_POSITION, position_null));
+                }
+                else{
+                    image->DrawRobot(listePosition.back());
+                    WriteInQueue(&q_messageToMon, new MessagePosition((MessageID)MESSAGE_CAM_POSITION, listePosition.back()));
+                    
+                }
+            }
+            rt_mutex_release(&mutex_enablePosition);
+            rt_mutex_release(&mutex_globalArene);
         }
         rt_mutex_release(&mutex_validateArena);
         msg = new MessageImg((MessageID)MESSAGE_CAM_IMAGE,image);
@@ -617,7 +651,7 @@ void Tasks::CloseCameraTask(void *arg){
         
         rt_sem_p(&sem_closeCamera, TM_INFINITE);
         rt_sem_p(&sem_cameraIsOpen, TM_INFINITE);
-        cout << "\nClosing Camera\n";
+        cout << "Closing Camera"<<endl;
         rt_mutex_acquire(&mutex_camera, TM_INFINITE);
         camera->Close();
         rt_mutex_release(&mutex_camera);
@@ -650,13 +684,15 @@ void Tasks::SearchArenaCameraTask(void *arg){
     while(1){
         rt_sem_p(&sem_arena, TM_INFINITE);
         rt_sem_p(&sem_cameraIsOpen, TM_INFINITE);
-        cout << "\nSearsching Arena\n";
+        cout << "Searsching Arena"<<endl;
         rt_mutex_acquire(&mutex_camera, TM_INFINITE);
         //Prendre le mutex va mettre fin a l'envoie perio d'image
         image =  new Img(camera->Grab());
         arene = image->SearchArena();
         if (arene.IsEmpty()){
             WriteInQueue(&q_messageToMon, new Message((MessageID)MESSAGE_ANSWER_NACK));
+            msg = new MessageImg((MessageID)MESSAGE_CAM_IMAGE,image);
+            WriteInQueue(&q_messageToMon, msg);   
             cout << "No arena found" << endl;
         }
         else {
