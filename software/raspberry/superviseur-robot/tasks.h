@@ -99,7 +99,6 @@ private:
     RT_MUTEX mutex_validateArena;
     RT_MUTEX mutex_globalArene;
     RT_MUTEX mutex_enablePosition;
-    RT_MUTEX mutex_areneMsgAttente;
 
     /**********************************************************************/
     /* Semaphores                                                         */
@@ -113,6 +112,7 @@ private:
     RT_SEM sem_cameraIsOpen;
     RT_SEM sem_closeCamera;
     RT_SEM sem_arena;
+    RT_SEM sem_areneMsgAttente;
 
     /**********************************************************************/
     /* Message queues                                                     */
