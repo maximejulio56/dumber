@@ -660,20 +660,22 @@ void Tasks::CloseCameraTask(void *arg){
     while(1){
         
         rt_sem_p(&sem_closeCamera, TM_INFINITE);
-        rt_sem_p(&sem_cameraIsOpen, TM_INFINITE);
+        
+        rt_mutex_acquire(&mutex_camera, TM_INFINITE);
+        if(camera->IsOpen()){
+            rt_mutex_release(&mutex_camera);
+            rt_sem_p(&sem_cameraIsOpen, TM_INFINITE);
+        }
+        else{
+            rt_mutex_release(&mutex_camera);
+            WriteInQueue(&q_messageToMon, new Message((MessageID)MESSAGE_ANSWER_NACK));
+        }
+        
         cout << "Closing Camera"<<endl;
         rt_mutex_acquire(&mutex_camera, TM_INFINITE);
         camera->Close();
         rt_mutex_release(&mutex_camera);
-//        if (camera->IsOpen()== true){
-//           WriteInQueue(&q_messageToMon, new Message((MessageID)MESSAGE_ANSWER_NACK)); 
-//        }
-//        else{
-//            WriteInQueue(&q_messageToMon, new Message((MessageID)MESSAGE_ANSWER_ACK));
-//            rt_sem_p(&sem_cameraIsOpen, TM_INFINITE);
-//            delete camera;
-//        }
-         // La caméra est release par la fct close donc on ne peut pas vérifier avec isOpen
+
         
         
     }
