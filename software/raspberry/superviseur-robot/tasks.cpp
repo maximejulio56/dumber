@@ -555,13 +555,10 @@ void Tasks::GetBatteryValueTask(void *arg){
         rs = robotStarted;
         rt_mutex_release(&mutex_robotStarted) ;// on verifie que le robot a commance
         if(rs == 1){
-            
             rt_mutex_acquire(&mutex_robot, TM_INFINITE);
             Battery_Level = (robot.Write(new Message((MessageID)MESSAGE_ROBOT_BATTERY_GET)));
             rt_mutex_release(&mutex_robot);
-            
             WriteInQueue(&q_messageToMon, Battery_Level);
-
         }
     }
 }
@@ -577,7 +574,6 @@ void Tasks::OpenCameraTask(void *arg){
     /* The task starts here                                                               */
     /**************************************************************************************/
     while(1){
-        rt_task_wait_period(NULL);
         rt_sem_p(&sem_openCamera, TM_INFINITE);
         cout << "Opening Camera"<<endl;
        
@@ -620,9 +616,14 @@ void Tasks::CaptureCameraTask(void *arg){
         if(validateArena == 1){
             rt_mutex_acquire(&mutex_globalArene, TM_INFINITE);
             image->DrawArena(globalArene);
+            rt_mutex_release(&mutex_globalArene);
+
             rt_mutex_acquire(&mutex_enablePosition, TM_INFINITE);
             if (enablePosition){
+                rt_mutex_release(&mutex_enablePosition);
+                rt_mutex_acquire(&mutex_globalArene, TM_INFINITE);
                 listePosition = image->SearchRobot(globalArene);
+                rt_mutex_release(&mutex_globalArene);
                 if(listePosition.empty()){
                     Position position_null;
                     position_null.center = cv::Point2f(-1.0,-1.0);
@@ -632,11 +633,9 @@ void Tasks::CaptureCameraTask(void *arg){
                 else{
                     image->DrawRobot(listePosition.back());
                     WriteInQueue(&q_messageToMon, new MessagePosition((MessageID)MESSAGE_CAM_POSITION, listePosition.back()));
-                    
                 }
             }
             rt_mutex_release(&mutex_enablePosition);
-            rt_mutex_release(&mutex_globalArene);
         }
         rt_mutex_release(&mutex_validateArena);
         msg = new MessageImg((MessageID)MESSAGE_CAM_IMAGE,image);
